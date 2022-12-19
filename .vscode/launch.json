@@ -1,0 +1,33 @@
+{
+    // Используйте IntelliSense, чтобы узнать о возможных атрибутах.
+    // Наведите указатель мыши, чтобы просмотреть описания существующих атрибутов.
+    // Для получения дополнительной информации посетите: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Отладка Laser Offset CLI",
+            "type": "python",
+            "request": "launch",
+            "module": "laser_offset",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/src",
+            "args": [
+                "~/Projects/DXF_Test",
+                "~/Projects/DXF_Test/Output",
+                "300",
+                "--svg"
+            ]
+        },
+        {
+            "name": "Laser Offset CLI HELP",
+            "type": "python",
+            "request": "launch",
+            "module": "laser_offset",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/src",
+            "args": [
+                "--help"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,21 @@
+[project]
+name = "laser_offset"
+version = "0.1.0"
+authors = [
+  { name="Andrey Zarembo-Godzyatskiy", email="andrey.zarembo@gmail.com" },
+]
+description = "Simple Tools that creates external and internal offsets for shapes. Supports DXF and SVG Import/Export."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/AndreyZarembo/LaserOffset"
+"Bug Tracker" = "https://github.com/AndreyZarembo/LaserOffset/issues"
+
+[project.scripts]
+laser_offset = "laser_offset:laser_offset"

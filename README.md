@@ -5,12 +5,12 @@ Simple Tools that creates external and internal offsets for shapes. Supports DXF
 
     This project is in early alpha and was created as side-project for hobby.
 
-![](imgs/outlines.svg)
+![Generated outlines Sample as SVG file](https://gist.githubusercontent.com/AndreyZarembo/ff74e14fa055ce41440176f0b22c0562/raw/965e9639e099d18c8249dd02d0a7bbac7184cc69/output.svg)
 
 Installing
 ----------
 
-Install and update using `pip`_:
+Install and update using `pip`:
 
 ```
 

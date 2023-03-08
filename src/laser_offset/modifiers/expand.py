@@ -15,22 +15,30 @@ class Expand(Modifier):
     def __init__(self, expand_value: float):
         self.expand_value = expand_value
         
-    def perform_expand(self, polygon_data: PolygonData, shape: Shape2d, internal: bool = False) -> Shape2d:
+    def perform_expand(self, polygon_data: PolygonData, shape: Shape2d, internal: bool = False) -> Optional[Shape2d]:
         segments = expdand_segments(polygon_data, self.expand_value, internal)
         fixed_segments = fix_segments(polygon_data, segments, self.expand_value, internal)
         has_fixes, segments_with_fixed_loops = fix_loops(fixed_segments)
         result_segments = fix_segments(polygon_data, segments_with_fixed_loops, self.expand_value, internal) if has_fixes else fixed_segments
         
         result_shapes = make_shape(polygon_data, shape.style, result_segments)
+        if result_shapes is None:
+            return None
+
         return result_shapes
 
     def modifyPath(self, shape: Path2d) -> List[Shape2d]:
+        if shape.components.__len__() == 2:
+            return []
+
         polygon_data: PolygonData = PolygonData.fromShape(shape)        
         result = [shape]
         exp_shape = self.perform_expand(polygon_data, shape, False)
+        if exp_shape is not None:
+            result.append(exp_shape)
         int_shape = self.perform_expand(polygon_data, shape, True)
-        result.append(exp_shape)
-        result.append(int_shape)        
+        if int_shape is not None:
+            result.append(int_shape)
         return result
 
     def modifyCircle(self, shape: Circle2d) -> List[Shape2d]:

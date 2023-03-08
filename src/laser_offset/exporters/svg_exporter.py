@@ -59,26 +59,30 @@ class SVGExporter(Exporter):
 
     def export_canvas(self, canvas: Canvas2d, match_size: bool, stream: StreamWriter):
 
+        target_canvase = canvas.updateCenterAndSizeFromBounds() if match_size else canvas
+
         viewboxWidth = 100
         
         svg_content = """{xml_header}
 <svg viewBox="{viewbox_size}" xmlns:svgjs="http://svgjs.com/svgjs" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g transform="scale(1, -1)">    
     {lines}
+  </g>
 </svg>
         """.format(
             xml_header='<?xml version="1.0" encoding="UTF-8"?>' if not self.skip_xml else '',
             viewbox_size=" ".join(map(lambda n: self.convert_number(n), [
-                -canvas.size.width/2,
-                -canvas.size.height/2,
-                canvas.size.width,
-                canvas.size.height
+                target_canvase.center.x - target_canvase.size.width/2,
+                - target_canvase.center.y - target_canvase.size.height/2,
+                target_canvase.size.width,
+                target_canvase.size.height
             ])),
-            width=self.convert_number(canvas.size.width, use_units=True),
-            height=self.convert_number(canvas.size.height, use_units=True),
+            width=self.convert_number(target_canvase.size.width, use_units=True),
+            height=self.convert_number(target_canvase.size.height, use_units=True),
             lines="\n".join(
                 map(
-                    lambda shape: "\t"+self.export_shape(shape), 
-                    canvas.shapes
+                    lambda shape: "\t"+self.export_shape(shape),
+                    target_canvase.shapes
                     )))
 
         stream.write(svg_content)

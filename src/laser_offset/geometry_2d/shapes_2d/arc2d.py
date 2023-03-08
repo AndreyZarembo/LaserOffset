@@ -11,6 +11,8 @@ from laser_offset.geometry_2d.style2d import Style
 
 from laser_offset.geometry_2d.normalize_angle import normalize_angle
 
+from laser_offset.geometry_2d.bounds_rect_2d import BoundsRect2d
+
 import math
 
 class Arc2d(Shape2d):
@@ -82,6 +84,13 @@ class Arc2d(Shape2d):
     @property
     def bounds(self) -> Bounds2d:
         raise RuntimeError("Not Implemented")
+
+    @property
+    def maxBoundary(self) -> BoundsRect2d:
+        return BoundsRect2d(self.center.x - max(self.radiuses.width, self.radiuses.height),
+                            self.center.y - max(self.radiuses.width, self.radiuses.height),
+                            self.center.x + max(self.radiuses.width, self.radiuses.height),
+                            self.center.y + math(self.radiuses.width, self.radiuses.height))
         
     @property
     def inverse(self) -> 'Shape2d':

@@ -11,6 +11,7 @@ from laser_offset.geometry_2d.bounds2d import Size2d
 from laser_offset.geometry_2d.stroke_style import StrokeStyle
 from laser_offset.geometry_2d.fill_style import FillStyle
 from laser_offset.geometry_2d.style2d import Style
+from laser_offset.geometry_2d.bounds_rect_2d import BoundsRect2d
 
 
 class Shape2d(ABC):
@@ -33,6 +34,10 @@ class Shape2d(ABC):
     @property
     def bounds(self) -> Bounds2d:
         return Bounds2d(Size2d(0,0))
+
+    @property
+    def maxBoundary(self) -> BoundsRect2d:
+        return BoundsRect2d(0,0,0,0)
         
     @property
     def relative(self) -> 'Shape2d':

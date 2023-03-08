@@ -13,12 +13,14 @@ from laser_offset.geometry_2d.stroke_style import StrokeStyle
 from laser_offset.geometry_2d.style2d import Style
 from laser_offset.geometry_2d.vector2d import Vector2d
 
+from laser_offset.geometry_2d.bounds_rect_2d import BoundsRect2d
+
+from laser_offset.geometry_2d.arc_info import ArcInfo
+
 import math
 
 class PathComponent(ABC):
     pass
-
-
 
 class Path2d(Shape2d):
     """Path Shape
@@ -41,8 +43,7 @@ class Path2d(Shape2d):
                 components.append(Line(shape.end))
 
             elif isinstance(shape, Arc2d):
-                # components.append(      Arc(shape.end, shape.radiuses, shape.angle, shape.large_arc, shape.sweep_flat))
-                components.append(SimpleArc(shape.end, shape.radiuses.width, not shape.sweep_flat, shape.large_arc))            
+                components.append(SimpleArc(shape.end, shape.radiuses.width, not shape.sweep_flat, shape.large_arc))
 
         components.append(ClosePath())
         return Path2d(Style(), components)        
@@ -59,6 +60,73 @@ class Path2d(Shape2d):
     @property
     def bounds(self) -> Bounds2d:
         raise RuntimeError("Not Implemented")
+
+    @property
+    def maxBoundary(self) -> BoundsRect2d:
+        minX = 10000
+        minY = 10000
+        maxX = -10000
+        maxY = -10000
+        prev_point = self.start
+        for component in self.components:
+            if isinstance(component, MoveOrigin):
+                move: MoveOrigin = component
+                minX = min(minX, move.target.x)
+                minY = min(minY, move.target.y)
+                maxX = max(maxX, move.target.x)
+                maxY = max(maxY, move.target.y)
+                prev_point = move.target
+            elif isinstance(component, Line):
+                line: Line = component
+                minX = min(minX, line.target.x)
+                minY = min(minY, line.target.y)
+                maxX = max(maxX, line.target.x)
+                maxY = max(maxY, line.target.y)
+                prev_point = line.target
+            elif isinstance(component, SimpleArc):
+                arc: SimpleArc = component
+                arc_info = ArcInfo.fromArc(prev_point,
+                                           arc.target,
+                                           arc.radius,
+                                           arc.large_arc,
+                                           arc.cw_direction
+                                           )
+                minX = min(minX, arc_info.center.x - arc_info.radius)
+                minY = min(minY, arc_info.center.y - arc_info.radius)
+                maxX = max(maxX, arc_info.center.x + arc_info.radius)
+                maxY = max(maxY, arc_info.center.y + arc_info.radius)
+                prev_point = arc.target
+
+        return BoundsRect2d(minX, minY, maxX, maxY)
+
+    @property
+    def start(self) -> Point2d:
+        return self.componentPoint(0)
+
+    @property
+    def end(self) -> Point2d:
+        if self.components.__len__() == 1:
+            return self.start
+        last_component = self.components[-1]
+        if isinstance(last_component, ClosePath):
+            return self.componentPoint(-2)
+        else:
+            return self.componentPoint(-1)
+
+    def componentPoint(self, component_index: int) -> Point2d:
+        component = self.components[component_index]
+        if isinstance(component, MoveOrigin):
+            move_origin: MoveOrigin = component
+            return move_origin.target
+        elif isinstance(component, Line):
+            line: Line = component
+            return line.target
+        elif isinstance(component, SimpleArc):
+            arc: SimpleArc = component
+            return arc.target
+        elif isinstance(component, Arc):
+            arc: Arc = component
+            return arc.target
         
     @property
     def relative(self) -> 'Shape2d':
@@ -336,140 +404,3 @@ class RelArc(PathComponent):
         self.angle = angle
         self.large_arc = large_arc
         self.sweep = sweep
-
-    
-class ArcInfo(NamedTuple):
-    center: Point2d
-    startAngle: float
-    endAngle: float
-    deltaAngle: float
-    cw: bool
-    startVector: Vector2d
-    endVector: Vector2d
-    radius: float
-
-    def __str__(self) -> str:
-        return "ArcInfo\n\tcenter:\t{center}\n\tstart angle:\t{sa}\n\tend angle:\t{ea}\n\tclockwise:\t{cw}\n\tradius:\t{r}".format(
-            center=self.center,
-            sa=self.startAngle,
-            ea=self.endAngle,
-            cw=self.cw,
-            r=self.radius
-        )
-
-# conversion_from_endpoint_to_center_parameterization
-# sample :  svgArcToCenterParam(200,200,50,50,0,1,1,300,200)
-# x1 y1 rx ry φ fA fS x2 y2
-def arc_info(prev_point: Point2d, arc: SimpleArc) -> ArcInfo:
-
-    def radian(ux: float, uy: float, vx: float, vy: float):
-        dot: float = ux * vx + uy * vy
-        mod: float = math.sqrt( ( ux * ux + uy * uy ) * ( vx * vx + vy * vy ) )
-        rad: float = math.acos( dot / mod )
-        if ux * vy - uy * vx < 0.0:
-            rad = -rad
-    
-        return rad
-
-    x1: float = prev_point.x
-    y1: float = prev_point.y
-    rx: float = arc.radius
-    ry: float = arc.radius
-    phi: float = 0
-    fA: float = arc.large_arc
-    fS: float = arc.cw_direction
-    x2: float = arc.target.x
-    y2: float = arc.target.y
-
-    PIx2: float = math.pi * 2.0
-#var cx, cy, startAngle, deltaAngle, endAngle;
-    if rx < 0:
-        rx = -rx
-
-    if ry < 0:
-        ry = -ry
-
-    if rx == 0.0 or ry == 0.0:
-        raise RuntimeError('Raidus can not be zero')
-
-    
-    s_phi: float = math.sin(phi)
-    c_phi: float = math.cos(phi)
-    hd_x: float = (x1 - x2) / 2.0 # half diff of x
-    hd_y: float = (y1 - y2) / 2.0 # half diff of y
-    hs_x: float = (x1 + x2) / 2.0 # half sum of x
-    hs_y: float = (y1 + y2) / 2.0 # half sum of y
-
-    # F6.5.1
-    x1_: float = c_phi * hd_x + s_phi * hd_y
-    y1_: float = c_phi * hd_y - s_phi * hd_x
-
-    # F.6.6 Correction of out-of-range radii
-    # Step 3: Ensure radii are large enough
-    lambda_: float = (x1_ * x1_) / (rx * rx) + (y1_ * y1_) / (ry * ry)
-    if lambda_ > 1:
-        rx = rx * math.sqrt(lambda_)
-        ry = ry * math.sqrt(lambda_)
-    
-    rxry: float = rx * ry
-    rxy1_: float = rx * y1_
-    ryx1_: float = ry * x1_
-
-    sum_of_sq: float = rxy1_ * rxy1_ + ryx1_ * ryx1_ # sum of square
-    if sum_of_sq == 0:
-        raise RuntimeError('start point can not be same as end point ', prev_point.__str__(), arc.radius)
-    
-    coe: float = math.sqrt(abs((rxry * rxry - sum_of_sq) / sum_of_sq))
-    if fA == fS:
-        coe = -coe
-
-    # F6.5.2
-    cx_: float = coe * rxy1_ / ry
-    cy_: float = -coe * ryx1_ / rx
-
-    # F6.5.3
-    cx = c_phi * cx_ - s_phi * cy_ + hs_x
-    cy = s_phi * cx_ + c_phi * cy_ + hs_y
-
-    xcr1: float = (x1_ - cx_) / rx
-    xcr2: float = (x1_ + cx_) / rx
-    ycr1: float = (y1_ - cy_) / ry
-    ycr2: float = (y1_ + cy_) / ry
-
-    # F6.5.5
-    startAngle: float = radian(1.0, 0.0, xcr1, ycr1)
-
-    # F6.5.6
-    deltaAngle = radian(xcr1, ycr1, -xcr2, -ycr2)
-    while deltaAngle > PIx2:
-        deltaAngle -= PIx2
-
-    while deltaAngle < 0.0:
-        deltaAngle += PIx2
-
-    if fS == False or fS == 0:
-        deltaAngle -= PIx2
-
-    endAngle = startAngle + deltaAngle
-    while endAngle > PIx2:
-        endAngle -= PIx2
-    while endAngle < 0.0: 
-        endAngle += PIx2
-
-    rotationSign: float = 1 if fS else -1
-
-    startVector: Vector2d = Vector2d.polar(1, startAngle + rotationSign * math.pi/2)
-    endVector: Vector2d = Vector2d.polar(1, endAngle + rotationSign * math.pi/2)
-
-    outputObj: ArcInfo = ArcInfo(
-        Point2d.cartesian(cx, cy),
-        startAngle,
-        endAngle,
-        deltaAngle,
-        fS == True or fS == 1,
-        startVector,
-        endVector,
-        arc.radius
-        )
-    
-    return outputObj

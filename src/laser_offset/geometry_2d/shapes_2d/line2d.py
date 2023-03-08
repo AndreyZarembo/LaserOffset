@@ -7,6 +7,7 @@ from typing import Sequence
 from laser_offset.geometry_2d.size2d import Size2d
 from laser_offset.geometry_2d.stroke_style import StrokeStyle
 from laser_offset.geometry_2d.style2d import Style
+from laser_offset.geometry_2d.bounds_rect_2d import BoundsRect2d
 
 class Line2d(Shape2d):
 
@@ -38,6 +39,13 @@ class Line2d(Shape2d):
     @property
     def bounds(self) -> Bounds2d:
         return Bounds2d(Size2d(self.end.x - self.start.x, self.end.y - self.start.y))
+
+    @property
+    def maxBoundary(self) -> BoundsRect2d:
+        return BoundsRect2d(min(self.start.x, self.end.x),
+                            min(self.start.y, self.end.y),
+                            max(self.start.x, self.end.x),
+                            max(self.start.y, self.end.y))
     
     @property
     def inverse(self) -> 'Shape2d':

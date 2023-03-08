@@ -17,6 +17,8 @@ from laser_offset.importers.importer import Importer
 
 from laser_offset.geometry_2d.canvas2d import Canvas2d
 
+from laser_offset.math.float_functions import fclose, fzero
+
 import ezdxf
 from ezdxf.document import Drawing
 from ezdxf.layouts.layout import Modelspace
@@ -74,12 +76,16 @@ class DXFImporter(Importer):
                 shapes.append(path)
                 
             elif entity.dxftype() == 'LINE':
-                line: Line2d = self.read_line2d(entity);
+                line: Line2d = self.read_line2d(entity)
                 shapes.append(line)                
                 
             elif entity.dxftype() == 'ARC':
-                arc: Arc2d = self.read_arc2d(entity);
+                arc: Arc2d = self.read_arc2d(entity)
                 shapes.append(arc)
+
+            elif entity.dxftype() == 'SPLINE':
+                spline_as_path: Path2d = self.read_spline_as_path2d(entity)
+                shapes.append(spline_as_path)
                 
             else:
                 print('UNKNOWN TYPE: ',entity.dxftype())
@@ -146,7 +152,7 @@ class DXFImporter(Importer):
             elif isinstance(components[-1], Line):
                 end_point = components[-1].target
 
-            if start_point.x != end_point.x or start_point.y != end_point.y:
+            if not fclose(start_point.x, end_point.x) or not fclose(start_point.y, end_point.y):
                 components.append(Line(start_point))
 
             components.append(ClosePath())
@@ -198,3 +204,26 @@ class DXFImporter(Importer):
         for point in input_points:
             polyline_points.append((point[0], point[1], point[2], point[3], point[4]))
         return polyline_points
+
+    def read_spline_as_path2d(self, entity: ezdxf.entities.spline.Spline ) -> Path2d:
+
+        components: List[PathComponent] = list()
+
+        step_point = entity.control_points[0]
+
+        prev_point = Point2d.cartesian(step_point[0], step_point[1])
+        components.append(MoveOrigin(prev_point))
+
+        for step_point in entity.flattening(0.05, 3):
+            point = Point2d.cartesian(step_point.x, step_point.y)
+            if not fzero(prev_point.distance(point)):
+                components.append(Line(point))
+            prev_point = point
+
+        # step_point = entity.control_points[-1]
+        # components.append(Line(Point2d.cartesian(step_point[0], step_point[1])))
+
+        if entity.closed:
+            components.append(ClosePath())
+
+        return Path2d(Style(), components)

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import math
 
 from laser_offset.modifiers.polygon_data import PolygonData, ShapeSegment
@@ -17,13 +17,13 @@ def expdand_segments(polygon_data: PolygonData, shift_distance: float, internal:
 
     ext_segments: List[ShapeSegment] = list()
     shift_sign = (1 if polygon_data.clockwise else -1) * (-1 if internal else 1)
-    radius_sign = (1 if polygon_data.clockwise else -1)    
+    radius_sign = (1 if polygon_data.clockwise else -1)
 
     # External segments
     for index, segment in enumerate(polygon_data.segments):
 
         start_shift_vector = Vector2d.polar( shift_distance, normalize_angle(segment.start_vector.da + shift_sign * math.pi / 2 ))
-        end_shift_vector = Vector2d.polar( shift_distance, normalize_angle(segment.end_vector.da + shift_sign * math.pi / 2 ))            
+        end_shift_vector = Vector2d.polar( shift_distance, normalize_angle(segment.end_vector.da + shift_sign * math.pi / 2 ))
 
         new_start_point = segment.start_point + start_shift_vector
         new_end_point = segment.end_point + end_shift_vector
@@ -37,9 +37,9 @@ def expdand_segments(polygon_data: PolygonData, shift_distance: float, internal:
                   fclose(prev_segment.end_vector.da - 2 * math.pi, segment.start_vector.da, angle_range)
 
         if not on_line and not segment.is_arc and segment.start_point.distance(segment.end_point) < shift_distance:
-            new_start_point += segment.start_vector.inverted.single_vector * (shift_distance / 2)
-            new_end_point += segment.end_vector.single_vector * (shift_distance / 2)
-        
+            new_start_point += segment.start_vector.inverted.single_vector * (shift_distance)
+            new_end_point += segment.end_vector.single_vector * (shift_distance)
+
         if segment.is_arc:
             
             new_radius = segment.component.radius + shift_distance * (-1 if not polygon_data.clockwise == segment.component.cw_direction else 1) * (-1 if internal else 1)
@@ -149,7 +149,7 @@ def fix_segments(polygon_data: PolygonData, new_segments: List[ShapeSegment], sh
                 arc_proposal = SimpleArc(segment.start_point, shift_distance, not arc_direction, False)
                 arc_info = ArcInfo.fromArc(prev_segment.end_point, arc_proposal.target, arc_proposal.radius, arc_proposal.large_arc, arc_proposal.cw_direction)
                                                                     
-                if fle(segment.start_point.distance(prev_segment.end_point), shift_distance) and on_line and arc_info.radius <= shift_distance:                                                                                     
+                if fle(segment.start_point.distance(prev_segment.end_point), shift_distance) and on_line and arc_info.radius <= shift_distance:
                     result.append(ShapeSegment(Line(segment.start_point), prev_segment.end_point, segment.start_point, prev_segment.end_vector, segment.start_vector, False))
                 else:
                     result.append(ShapeSegment(SimpleArc(segment.start_point, shift_distance, not arc_direction, False), prev_segment.end_point, segment.start_point, prev_segment.end_vector, segment.start_vector, True))
@@ -199,7 +199,7 @@ def fix_loops(segments: List[ShapeSegment]) -> Tuple[bool, List[ShapeSegment]]:
     
     if items_to_remove.__len__() == 0:
         return (False, segments)
-    
+
     result_indexes = list()
     for items_range in items_to_remove:
         result_indexes += list(items_range)
@@ -212,9 +212,12 @@ def fix_loops(segments: List[ShapeSegment]) -> Tuple[bool, List[ShapeSegment]]:
 # ---- ---- ---- ---- ---- ----
 
 
-def make_shape(polygon_data: PolygonData, style: Style, shape: List[ShapeSegment]) -> Shape2d:
-    
+def make_shape(polygon_data: PolygonData, style: Style, shape: List[ShapeSegment]) -> Optional[Shape2d]:
+
     components: List[PathComponent] = list()
+
+    if shape.__len__() == 0:
+        return None
         
     for segment in shape:
         components.append(segment.component)

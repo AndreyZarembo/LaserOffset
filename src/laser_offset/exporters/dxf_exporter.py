@@ -18,6 +18,7 @@ from laser_offset.geometry_2d.shapes_2d.path2d import HorizontalLine, Line, Move
 from laser_offset.geometry_2d.shapes_2d.polygon2d import Polygon2d
 from laser_offset.geometry_2d.shapes_2d.polyline2d import Polyline2d
 from laser_offset.geometry_2d.shapes_2d.rect2d import Rect2d
+from laser_offset.math.float_functions import fge
 
 class DXFExporter(Exporter):
 
@@ -78,6 +79,9 @@ class DXFExporter(Exporter):
                 polyline_points.append(self.lw_polyline_point_from_line(component))
             elif isinstance(component, SimpleArc):
                 polyline_points.append(self.lw_polyline_point_from_arc(component))
+            elif isinstance(component, Arc):
+                polyline_points.append(self.lw_polyline_point_from_arc(component))
+
             
             if index == 0:
                 continue
@@ -108,8 +112,11 @@ class DXFExporter(Exporter):
         dx: float = prev_point[0] - arc.target.x
         dy: float = prev_point[1] - arc.target.y
         l: float = math.sqrt( dx ** 2 + dy ** 2)
-        if arc.radius < l/2:
+        if not fge(arc.radius, l/2):
             return 0
+
+        if arc.radius < l / 2:
+            l = arc.radius * 2
         
         r: float = arc.radius
         sagitta_a: float = r + math.sqrt(r ** 2 - l ** 2 / 4 )

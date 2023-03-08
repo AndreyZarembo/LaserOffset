@@ -4,7 +4,7 @@ import math
 
 from laser_offset.geometry_2d.point2d import Point2d
 from laser_offset.geometry_2d.vector2d import Vector2d
-from laser_offset.geometry_2d.shapes_2d.path2d import PathComponent, ClosePath, MoveOrigin, SimpleArc, Line
+from laser_offset.geometry_2d.shapes_2d.path2d import PathComponent, ClosePath, MoveOrigin, SimpleArc, Line, Arc
 from laser_offset.geometry_2d.shape2d import Shape2d
 from laser_offset.geometry_2d.shapes_2d.path2d import Path2d
 from laser_offset.geometry_2d.shapes_2d.circle2d import Circle2d
@@ -99,10 +99,13 @@ class PolygonData(NamedTuple):
         result_segments: List[ShapeSegment] = list()
         result_vertexes: List[Vertex] = list()
 
-        lines_and_arcs = list(filter(lambda component: isinstance(component, Line) or isinstance(component, SimpleArc),
+        lines_and_arcs = list(filter(lambda component: isinstance(component, Arc) or isinstance(component, Line) or isinstance(component, SimpleArc),
                                      shape.components))
         if not lines_and_arcs[-1].target.equals( shape.components[0].target):
             lines_and_arcs.append(Line(shape.components[0].target))
+
+        if lines_and_arcs.__len__() < 2:
+            return PolygonData([], [], True)
 
         momentum = 0
 

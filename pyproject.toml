@@ -1,6 +1,6 @@
 [project]
 name = "laser_offset"
-version = "0.1.0"
+version = "0.5.0"
 authors = [
   { name="Andrey Zarembo-Godzyatskiy", email="andrey.zarembo@gmail.com" },
 ]

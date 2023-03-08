@@ -2,9 +2,11 @@ from typing import List, Tuple
 from laser_offset.geometry_2d.point2d import Point2d
 from laser_offset.geometry_2d.size2d import Size2d
 from laser_offset.geometry_2d.shape2d import Shape2d
-from laser_offset.geometry_2d.shapes_2d.path2d import Path2d
+from laser_offset.geometry_2d.shapes_2d.path2d import Path2d, Arc, SimpleArc, Line
 from laser_offset.geometry_2d.shapes_2d.line2d import Line2d
 from laser_offset.geometry_2d.shapes_2d.arc2d import Arc2d
+
+from laser_offset.geometry_2d.bounds_rect_2d import BoundsRect2d
 
 # Converts list of shapes to shape chains
 def prepareShapes(shapes: List[Shape2d]) -> List[List[Shape2d]]:
@@ -68,10 +70,39 @@ def extractPathsFromShapes(shapes: List[Shape2d]) -> Tuple[List[Shape2d], List[S
             shapes_to_merge.append(shape)
         elif isinstance(shape, Line2d):
             shapes_to_merge.append(shape)
+        elif isinstance(shape, Path2d):
+            path2d: Path2d = shape
+            if path2d.isClosed:
+                result.append(shape)
+            else:
+                shapes_to_merge += extractComponentsFromPath(path2d)
         else:
             result.append(shape)
                 
     return (shapes_to_merge, result)
+
+def extractComponentsFromPath(path: Path2d) -> List[Shape2d]:
+    result: List[Shape2d] = []
+    current_point = path.start
+    for component in path.components:
+        if isinstance(component, SimpleArc):
+            arc: SimpleArc = component
+            result.append(Arc2d(path.style, current_point, arc.target, Size2d(arc.radius, arc.radius), 0, arc.large_arc, arc.cw_direction))
+            current_point = arc.target
+
+        elif isinstance(component, Arc):
+            arc: Arc = component
+            result.append(Arc2d(path.style, current_point, arc.target, arc.radiuses, arc.angle, arc.large_arc, arc.sweep))
+            current_point = arc.target
+
+        elif isinstance(component, Line):
+            line: Line = component
+            new_line = Line2d(path.style, current_point, line.target)
+            result.append(new_line)
+            current_point = line.target
+
+    return result
+
 
 # Looks at list of shapes to extract path elements for merge
 def joinShapesToPathShapes(shapes: List[Shape2d]) -> List[Shape2d]:
@@ -104,8 +135,28 @@ class Canvas2d:
     def relative(self) -> 'Canvas2d':
         relative_shapes = list(map(lambda shape: shape.relative, self.shapes))
         return Canvas2d(self.center, self.size, relative_shapes)
-        
 
+    @property
+    def maxBoundary(self) -> BoundsRect2d:
+        minX = 10000
+        minY = 10000
+        maxX = -10000
+        maxY = -10000
+        for shape in self.shapes:
+            bounds = shape.maxBoundary
+            minX = min(minX, bounds.minX)
+            minY = min(minY, bounds.minY)
+            maxX = max(maxX, bounds.maxX)
+            maxY = max(maxY, bounds.maxY)
+        s = max(maxX - minX, maxY - minY) * 0.05
+        return BoundsRect2d(minX - s, minY - s, maxX + s, maxY + s)
+
+    def updateCenterAndSizeFromBounds(self) -> 'Canvas2d':
+        bounds = self.maxBoundary
+        return Canvas2d(Point2d.cartesian((bounds.maxX + bounds.minX)/2, (bounds.maxY + bounds.minY)/2),
+                        Size2d(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY),
+                        self.shapes
+                        )
     
     def cobineShapesToPaths(self) -> 'Canvas2d':
         shapes = joinShapesToPathShapes(self.shapes)
